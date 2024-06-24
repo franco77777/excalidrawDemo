@@ -53,8 +53,10 @@ function App() {
     return result;
   };
 
-  const nearPoint = (x, y, x1, y1, name) => {
-    return Math.abs(x - x1) < 5 && Math.abs(y - y1) < 5 ? name : null;
+  const nearPoint = (clientX, clientY, x1, y1, name) => {
+    return Math.abs(clientX - x1) < 5 && Math.abs(clientY - y1) < 5
+      ? name
+      : null;
   };
 
   const positionWithinElement = (clientX, clientY, element) => {
@@ -106,7 +108,11 @@ function App() {
         const offsetY = clientY - element.y1;
 
         setSelectedElement({ ...element, offsetX, offsetY });
-        setAction("moving");
+        if (element.position === "inside") {
+          setAction("moving");
+        } else {
+          setAction("resizing");
+        }
       }
     } else {
       let id;
@@ -142,6 +148,23 @@ function App() {
         return "move";
     }
   };
+  const resizedCoordinates = (clientX, clientY, position, coordinates) => {
+    const { x1, y1, x2, y2 } = coordinates;
+    switch (position) {
+      case "tl":
+      case "start":
+        return { x1: clientX, y1: clientY, x2, y2 };
+      case "tr":
+        return { x1, y1: clientY, x2: clientX, y2 };
+      case "bl":
+        return { x1: clientX, y1, x2, y2: clientY };
+      case "br":
+      case "end":
+        return { x1, y1, x2: clientX, y2: clientY };
+      default:
+        return null; //should not really get here...
+    }
+  };
 
   const handleMouseMove = (e) => {
     const { clientX, clientY } = e;
@@ -173,6 +196,17 @@ function App() {
       currentElement.x2 = nextX1 + width;
       currentElement.y2 = nextY1 + height;
       setElements(elementsCopy);
+    } else if (action === "resizing") {
+      const { id, type, position, ...coordinates } = selectedElement;
+      console.log("coordinates", coordinates);
+
+      const { x1, y1, x2, y2 } = resizedCoordinates(
+        clientX,
+        clientY,
+        position,
+        coordinates
+      );
+      updateElement(id, x1, y1, x2, y2);
     }
   };
   const adjustElementCoordinates = (element) => {
