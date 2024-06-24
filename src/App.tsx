@@ -129,6 +129,7 @@ function App() {
         type: tool,
         id: id,
       };
+      setSelectedElement(newElement);
       setElements((state) => [...state, newElement]);
       setAction("drawning");
     }
@@ -236,12 +237,13 @@ function App() {
 
     setElements(copyElements);
   };
+  console.log("elements", elements);
+
   const handleMouseUp = () => {
-    if (action === "drawning") {
-      const index = elements.length - 1;
-      const elementCreated = elements[index];
-      const id = elementCreated.id;
-      const { x1, y1, x2, y2 } = adjustElementCoordinates(elementCreated);
+    if (action === "drawning" || action === "resizing") {
+      const id = selectedElement.id;
+      const currentElement = elements.find((e) => e.id === id);
+      const { x1, y1, x2, y2 } = adjustElementCoordinates(currentElement);
       updateElement(id, x1, y1, x2, y2);
     }
     setAction("none");
