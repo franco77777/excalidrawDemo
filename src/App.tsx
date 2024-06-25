@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import reactLogo from "./assets/react.svg";
 import viteLogo from "/vite.svg";
 import "./App.css";
+import getStroke from "perfect-freehand";
 const useHistory = (initialState) => {
   const [index, setIndex] = useState(0);
   const [history, setHistory] = useState([initialState]);
@@ -70,6 +71,21 @@ function App() {
       document.removeEventListener("keydown", undoRedoFunction);
     };
   }, [undo, redo]);
+  const getSvgPathFromStroke = (stroke) => {
+    if (!stroke.length) return "";
+
+    const d = stroke.reduce(
+      (acc, [x0, y0], i, arr) => {
+        const [x1, y1] = arr[(i + 1) % arr.length];
+        acc.push(x0, y0, (x0 + x1) / 2, (y0 + y1) / 2);
+        return acc;
+      },
+      ["M", ...stroke[0], "Q"]
+    );
+
+    d.push("Z");
+    return d.join(" ");
+  };
   const createElement = (element) => {
     const canvas = document.getElementById("canvas");
     const ctx = canvas.getContext("2d");
@@ -89,6 +105,16 @@ function App() {
           element.x2 - element.x1,
           element.y2 - element.y1
         );
+        break;
+      case "pencil":
+        {
+          const stroke = getSvgPathFromStroke(
+            getStroke(element.points, {
+              size: 5,
+            })
+          );
+          ctx.fill(new Path2D(stroke));
+        }
 
         break;
       default:
@@ -145,6 +171,39 @@ function App() {
       }))
       .find((element) => element.position !== null);
   };
+  const generateElementType = (clientX, clientY) => {
+    let id;
+    if (elements.length !== 0) {
+      id = elements[elements.length - 1].id + 1;
+    } else {
+      id = 1;
+    }
+    switch (tool) {
+      case "rectangle":
+      case "line": {
+        const newElement = {
+          x1: clientX,
+          y1: clientY,
+          x2: clientX,
+          y2: clientY,
+          type: tool,
+          id: id,
+        };
+        return newElement;
+      }
+      case "pencil": {
+        const newElement = {
+          points: [{ x: clientX, y: clientY }],
+          type: tool,
+          id: id,
+        };
+        return newElement;
+      }
+
+      default:
+        break;
+    }
+  };
   const handleMouseDown = (e) => {
     const { clientX, clientY } = e;
     if (tool === "selection") {
@@ -164,20 +223,9 @@ function App() {
         }
       }
     } else {
-      let id;
-      if (elements.length !== 0) {
-        id = elements[elements.length - 1].id + 1;
-      } else {
-        id = 1;
-      }
-      const newElement = {
-        x1: clientX,
-        y1: clientY,
-        x2: clientX,
-        y2: clientY,
-        type: tool,
-        id: id,
-      };
+      const newElement = generateElementType(clientX, clientY);
+      console.log("newElement", newElement);
+
       setSelectedElement(newElement);
       setElements((state) => [...state, newElement]);
       setAction("drawning");
@@ -226,10 +274,18 @@ function App() {
         : "default";
     }
     if (action === "drawning") {
+      const { id, type } = selectedElement;
       const elementsCopy = [...elements];
       const currentElement = elementsCopy[elements.length - 1];
-      currentElement.x2 = clientX;
-      currentElement.y2 = clientY;
+      if (type === "pencil") {
+        currentElement.points = [
+          ...currentElement.points,
+          { x: clientX, y: clientY },
+        ];
+      } else {
+        currentElement.x2 = clientX;
+        currentElement.y2 = clientY;
+      }
 
       setElements(elementsCopy, true);
     } else if (action === "moving") {
@@ -271,6 +327,7 @@ function App() {
   const updateElement = (id, x1, y1, x2, y2) => {
     const copyElements = [...elements];
     const elementForUpdate = copyElements.find((e) => e.id === id);
+    const index = copyElements.findIndex((e) => e.id === id);
 
     const newElement = {
       x1: x1,
@@ -280,7 +337,8 @@ function App() {
       type: elementForUpdate.type,
       id: id,
     };
-    copyElements[id - 1] = newElement;
+
+    copyElements[index] = newElement;
 
     setElements(copyElements, true);
   };
@@ -292,7 +350,7 @@ function App() {
         const currentElement = elements.find((e) => e.id === id);
 
         const { x1, y1, x2, y2 } = adjustElementCoordinates(currentElement);
-        updateElement(id, x1, y1, x2, y2);
+        if (tool !== "pencil") updateElement(id, x1, y1, x2, y2);
       }
     }
     setAction("none");
