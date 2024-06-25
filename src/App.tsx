@@ -131,36 +131,85 @@ function App() {
       ? name
       : null;
   };
-
+  const onLine = (x1, y1, x2, y2, clientX, clientY, maxDistance = 1) => {
+    const a = { x: x1, y: y1 };
+    const b = { x: x2, y: y2 };
+    const c = { x: clientX, y: clientY };
+    const offset = distance(a, b) - (distance(a, c) + distance(b, c));
+    return Math.abs(offset) < maxDistance ? "inside" : null;
+  };
   const positionWithinElement = (clientX, clientY, element) => {
     const { type, x1, y1, x2, y2 } = element;
-    //x1=323 x2=401 y1=133 y2=174
-    //x1 - x2 = 78 = 6084  y1 - y2 = 41 = 1681
+    switch (type) {
+      case "line": {
+        const on = onLine(x1, y1, x2, y2, clientX, clientY);
+        const start = nearPoint(clientX, clientY, x1, y1, "start");
+        const end = nearPoint(clientX, clientY, x2, y2, "end");
+        console.log("x1", x1);
+        console.log("x2", x2);
+        console.log("y1", y1);
+        console.log("y2", y2);
+        return start || end || on;
+      }
 
-    if (type === "rectangle") {
-      // const minX = Math.min(x1, x2);
-      // const maxX = Math.max(x1, x2);
-      // const minY = Math.min(y1, y2);
-      // const maxY = Math.max(y1, y2);
-      const topLeft = nearPoint(clientX, clientY, x1, y1, "tl");
-      const topRight = nearPoint(clientX, clientY, x2, y1, "tr");
-      const bottonLeft = nearPoint(clientX, clientY, x1, y2, "bl");
-      const bottonRight = nearPoint(clientX, clientY, x2, y2, "br");
-      const inside =
-        clientX >= x1 && clientX <= x2 && clientY >= y1 && clientY <= y2
+      case "rectangle": {
+        const topLeft = nearPoint(clientX, clientY, x1, y1, "tl");
+        const topRight = nearPoint(clientX, clientY, x2, y1, "tr");
+        const bottomLeft = nearPoint(clientX, clientY, x1, y2, "bl");
+        const bottomRight = nearPoint(clientX, clientY, x2, y2, "br");
+        const inside =
+          clientX >= x1 && clientX <= x2 && clientY >= y1 && clientY <= y2
+            ? "inside"
+            : null;
+        return topLeft || topRight || bottomLeft || bottomRight || inside;
+      }
+
+      case "pencil": {
+        const betweenAnyPoint = element.points.some((point, index) => {
+          const nextPoint = element.points[index + 1];
+          if (!nextPoint) return false;
+          return (
+            onLine(
+              point.x,
+              point.y,
+              nextPoint.x,
+              nextPoint.y,
+              clientX,
+              clientY,
+              5
+            ) != null
+          );
+        });
+        return betweenAnyPoint ? "inside" : null;
+      }
+
+      case "text":
+        return clientX >= x1 && clientX <= x2 && clientY >= y1 && clientY <= y2
           ? "inside"
           : null;
-      return topLeft || topRight || bottonLeft || bottonRight || inside;
-    } else {
-      const a = { x: x1, y: y1 };
-      const b = { x: x2, y: y2 };
-      const c = { x: clientX, y: clientY };
-      const offset = distance(a, b) - (distance(a, c) + distance(b, c));
-      const start = nearPoint(clientX, clientY, x1, y1, "start");
-      const end = nearPoint(clientX, clientY, x2, y2, "end");
-      const inside = Math.abs(offset) < 1 ? "inside" : null;
-      return start || end || inside;
+      // default:
+      //   throw new Error(`Type not recognised: ${type}`);
     }
+    // if (type === "rectangle") {
+    //   const topLeft = nearPoint(clientX, clientY, x1, y1, "tl");
+    //   const topRight = nearPoint(clientX, clientY, x2, y1, "tr");
+    //   const bottonLeft = nearPoint(clientX, clientY, x1, y2, "bl");
+    //   const bottonRight = nearPoint(clientX, clientY, x2, y2, "br");
+    //   const inside =
+    //     clientX >= x1 && clientX <= x2 && clientY >= y1 && clientY <= y2
+    //       ? "inside"
+    //       : null;
+    //   return topLeft || topRight || bottonLeft || bottonRight || inside;
+    // } else {
+    //   const a = { x: x1, y: y1 };
+    //   const b = { x: x2, y: y2 };
+    //   const c = { x: clientX, y: clientY };
+    //   const offset = distance(a, b) - (distance(a, c) + distance(b, c));
+    //   const start = nearPoint(clientX, clientY, x1, y1, "start");
+    //   const end = nearPoint(clientX, clientY, x2, y2, "end");
+    //   const inside = Math.abs(offset) < 1 ? "inside" : null;
+    //   return start || end || inside;
+    // }
   };
 
   const getElementAtPosition = (clientX, clientY, elements) => {
@@ -204,16 +253,24 @@ function App() {
         break;
     }
   };
+  console.log("selectedElement", selectedElement);
   const handleMouseDown = (e) => {
     const { clientX, clientY } = e;
     if (tool === "selection") {
       const element = getElementAtPosition(clientX, clientY, elements);
 
       if (element) {
-        const offsetX = clientX - element.x1;
-        const offsetY = clientY - element.y1;
+        if (element.type === "pencil") {
+          const xOffsets = element.points.map((point) => clientX - point.x);
+          const yOffsets = element.points.map((point) => clientY - point.y);
+          setSelectedElement({ ...element, xOffsets, yOffsets });
+        } else {
+          const offsetX = clientX - element.x1;
+          const offsetY = clientY - element.y1;
 
-        setSelectedElement({ ...element, offsetX, offsetY });
+          setSelectedElement({ ...element, offsetX, offsetY });
+        }
+
         setElements((prevState) => prevState);
 
         if (element.position === "inside") {
@@ -289,13 +346,30 @@ function App() {
 
       setElements(elementsCopy, true);
     } else if (action === "moving") {
-      const { id, x1, y1, x2, y2, offsetX, offsetY } = selectedElement;
-      const width = x2 - x1;
-      const height = y2 - y1;
-      const nextX1 = clientX - offsetX;
-      const nextY1 = clientY - offsetY;
+      if (selectedElement.type === "pencil") {
+        console.log("is pencillllllllllll");
 
-      updateElement(id, nextX1, nextY1, nextX1 + width, nextY1 + height);
+        const newPoints = selectedElement.points.map((_, index) => ({
+          x: clientX - selectedElement.xOffsets[index],
+          y: clientY - selectedElement.yOffsets[index],
+        }));
+        const elementsCopy = [...elements];
+        const index = elements.findIndex((e) => e.id === selectedElement.id);
+        elementsCopy[index] = {
+          ...elementsCopy[index],
+          points: newPoints,
+        };
+        console.log("elementsCopy", elementsCopy);
+        setElements(elementsCopy, true);
+      } else {
+        const { id, x1, y1, x2, y2, offsetX, offsetY } = selectedElement;
+        const width = x2 - x1;
+        const height = y2 - y1;
+        const nextX1 = clientX - offsetX;
+        const nextY1 = clientY - offsetY;
+
+        updateElement(id, nextX1, nextY1, nextX1 + width, nextY1 + height);
+      }
     } else if (action === "resizing") {
       const { id, type, position, ...coordinates } = selectedElement;
 
