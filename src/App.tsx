@@ -2,9 +2,42 @@ import { useEffect, useState } from "react";
 import reactLogo from "./assets/react.svg";
 import viteLogo from "/vite.svg";
 import "./App.css";
+const useHistory = (initialState) => {
+  const [index, setIndex] = useState(0);
+  const [history, setHistory] = useState([initialState]);
+  // console.log("index", index);
+  // console.log("history", history);
+  // console.log("historyindex", history[index]);
+  const setState = (action, overwrite = false) => {
+    // console.log("action", action);
+    // console.log("overwrite", overwrite);
 
+    const newState =
+      typeof action === "function" ? action(history[index]) : action;
+
+    //console.log("newstate", newState);
+
+    if (overwrite) {
+      const historyCopy = [...history];
+      historyCopy[index] = newState;
+      setHistory(historyCopy);
+    } else {
+      const updatedState = [...history].slice(0, index + 1);
+      setHistory([...updatedState, newState]);
+      //setHistory((prevState) => [...prevState, newState]);
+      setIndex((prevState) => prevState + 1);
+    }
+  };
+  //console.log("history", history);
+  //console.log("index", index);
+  const undo = () => index > 0 && setIndex((prevState) => prevState - 1);
+  const redo = () =>
+    index < history.length - 1 && setIndex((prevState) => prevState + 1);
+
+  return [history[index], setState, undo, redo];
+};
 function App() {
-  const [elements, setElements] = useState([]);
+  const [elements, setElements, undo, redo] = useHistory([]);
   const [action, setAction] = useState("none");
   const [tool, setTool] = useState("line");
   const [selectedElement, setSelectedElement] = useState();
@@ -22,7 +55,21 @@ function App() {
     // ctx.stroke();
     elements.forEach((e) => createElement(e));
   }, [elements]);
+  useEffect(() => {
+    const undoRedoFunction = (event) => {
+      if ((event.metaKey || event.ctrlKey) && event.key === "z") {
+        undo();
+      }
+      if ((event.metaKey || event.ctrlKey) && event.key === "y") {
+        redo();
+      }
+    };
 
+    document.addEventListener("keydown", undoRedoFunction);
+    return () => {
+      document.removeEventListener("keydown", undoRedoFunction);
+    };
+  }, [undo, redo]);
   const createElement = (element) => {
     const canvas = document.getElementById("canvas");
     const ctx = canvas.getContext("2d");
@@ -108,6 +155,8 @@ function App() {
         const offsetY = clientY - element.y1;
 
         setSelectedElement({ ...element, offsetX, offsetY });
+        setElements((prevState) => prevState);
+
         if (element.position === "inside") {
           setAction("moving");
         } else {
@@ -171,7 +220,6 @@ function App() {
     const { clientX, clientY } = e;
     if (tool === "selection") {
       const element = getElementAtPosition(clientX, clientY, elements);
-      console.log("element", element);
 
       e.target.style.cursor = element
         ? cursorForPosition(element.position)
@@ -183,23 +231,17 @@ function App() {
       currentElement.x2 = clientX;
       currentElement.y2 = clientY;
 
-      setElements(elementsCopy);
+      setElements(elementsCopy, true);
     } else if (action === "moving") {
       const { id, x1, y1, x2, y2, offsetX, offsetY } = selectedElement;
       const width = x2 - x1;
       const height = y2 - y1;
-      const elementsCopy = [...elements];
       const nextX1 = clientX - offsetX;
       const nextY1 = clientY - offsetY;
-      const currentElement = elementsCopy.find((e) => e.id === id);
-      currentElement.x1 = nextX1;
-      currentElement.y1 = nextY1;
-      currentElement.x2 = nextX1 + width;
-      currentElement.y2 = nextY1 + height;
-      setElements(elementsCopy);
+
+      updateElement(id, nextX1, nextY1, nextX1 + width, nextY1 + height);
     } else if (action === "resizing") {
       const { id, type, position, ...coordinates } = selectedElement;
-      console.log("coordinates", coordinates);
 
       const { x1, y1, x2, y2 } = resizedCoordinates(
         clientX,
@@ -230,21 +272,28 @@ function App() {
     const copyElements = [...elements];
     const elementForUpdate = copyElements.find((e) => e.id === id);
 
-    elementForUpdate.x1 = x1;
-    elementForUpdate.y1 = y1;
-    elementForUpdate.x2 = x2;
-    elementForUpdate.y2 = y2;
+    const newElement = {
+      x1: x1,
+      y1: y1,
+      x2: x2,
+      y2: y2,
+      type: elementForUpdate.type,
+      id: id,
+    };
+    copyElements[id - 1] = newElement;
 
-    setElements(copyElements);
+    setElements(copyElements, true);
   };
-  console.log("elements", elements);
 
   const handleMouseUp = () => {
-    if (action === "drawning" || action === "resizing") {
-      const id = selectedElement.id;
-      const currentElement = elements.find((e) => e.id === id);
-      const { x1, y1, x2, y2 } = adjustElementCoordinates(currentElement);
-      updateElement(id, x1, y1, x2, y2);
+    if (selectedElement) {
+      if (action === "drawning" || action === "resizing") {
+        const id = selectedElement.id;
+        const currentElement = elements.find((e) => e.id === id);
+
+        const { x1, y1, x2, y2 } = adjustElementCoordinates(currentElement);
+        updateElement(id, x1, y1, x2, y2);
+      }
     }
     setAction("none");
     setSelectedElement(null);
@@ -289,10 +338,10 @@ function App() {
         />
         <label htmlFor="text">Text</label>
       </div>
-      {/* <div style={{ position: "fixed", zIndex: 2, bottom: 0, padding: 10 }}>
+      <div style={{ position: "fixed", zIndex: 2, bottom: 0, padding: 10 }}>
         <button onClick={undo}>Undo</button>
         <button onClick={redo}>Redo</button>
-      </div> */}
+      </div>
       {/* {action === "writing" ? (
         <textarea
           ref={textAreaRef}
