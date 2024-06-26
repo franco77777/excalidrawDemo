@@ -342,34 +342,30 @@ function App() {
   const handleMouseDown = (e) => {
     if (action === "writing") return;
     const { clientX, clientY } = getMouseCoordinates(e);
-
+    const element = getElementAtPosition(clientX, clientY, elements);
     if (e.button === 1 || pressedKeys.has(" ")) {
       setAction("panning");
       setStartPanMousePosition({ x: clientX, y: clientY });
       return;
     }
-    if (tool === "selection") {
-      const element = getElementAtPosition(clientX, clientY, elements);
+    if (element) {
+      if (element.type === "pencil") {
+        const xOffsets = element.points.map((point) => clientX - point.x);
+        const yOffsets = element.points.map((point) => clientY - point.y);
+        setSelectedElement({ ...element, xOffsets, yOffsets });
+      } else {
+        const offsetX = clientX - element.x1;
+        const offsetY = clientY - element.y1;
 
-      if (element) {
-        if (element.type === "pencil") {
-          const xOffsets = element.points.map((point) => clientX - point.x);
-          const yOffsets = element.points.map((point) => clientY - point.y);
-          setSelectedElement({ ...element, xOffsets, yOffsets });
-        } else {
-          const offsetX = clientX - element.x1;
-          const offsetY = clientY - element.y1;
+        setSelectedElement({ ...element, offsetX, offsetY });
+      }
 
-          setSelectedElement({ ...element, offsetX, offsetY });
-        }
+      setElements((prevState) => prevState);
 
-        setElements((prevState) => prevState);
-
-        if (element.position === "inside") {
-          setAction("moving");
-        } else {
-          setAction("resizing");
-        }
+      if (element.position === "inside") {
+        setAction("moving");
+      } else {
+        setAction("resizing");
       }
     } else {
       const newElement = generateElementType(clientX, clientY);
@@ -415,6 +411,12 @@ function App() {
 
   const handleMouseMove = (e) => {
     const { clientX, clientY } = getMouseCoordinates(e);
+
+    const element = getElementAtPosition(clientX, clientY, elements);
+
+    e.target.style.cursor = element
+      ? cursorForPosition(element.position)
+      : "default";
     if (action === "panning") {
       const deltaX = clientX - startPanMousePosition.x;
       const deltaY = clientY - startPanMousePosition.y;
@@ -425,13 +427,6 @@ function App() {
       return;
     }
 
-    if (tool === "selection") {
-      const element = getElementAtPosition(clientX, clientY, elements);
-
-      e.target.style.cursor = element
-        ? cursorForPosition(element.position)
-        : "default";
-    }
     if (action === "drawning") {
       const { id, type } = selectedElement;
       const elementsCopy = [...elements];
@@ -527,6 +522,7 @@ function App() {
       case "text":
         {
           const ctx = document.getElementById("canvas").getContext("2d");
+          ctx.font = "24px sans-serif";
           const textWidth = ctx.measureText(text).width;
           //const textHeight = ctx.measureText('M').width;
           const textHeight = 24;
@@ -590,13 +586,6 @@ function App() {
       <div style={{ position: "fixed", zIndex: 2 }}>
         <input
           type="radio"
-          id="selection"
-          checked={tool === "selection"}
-          onChange={() => setTool("selection")}
-        />
-        <label htmlFor="selection">Selection</label>
-        <input
-          type="radio"
           id="line"
           checked={tool === "line"}
           onChange={() => setTool("line")}
@@ -629,7 +618,6 @@ function App() {
         <button onClick={() => onZoom(-0.1)}>-</button>
         <span onClick={() => setScale(1)}>
           {new Intl.NumberFormat("en-GB", { style: "percent" }).format(scale)}
-          {scale}
         </span>
         <button onClick={() => onZoom(+0.1)}>+</button>
         <button onClick={undo}>Undo</button>
