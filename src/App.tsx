@@ -75,22 +75,35 @@ function App() {
   });
   const textAreaRef = useRef();
   const pressedKeys = usePressedKeys();
+  const [scale, setScale] = useState(1);
+  const [scaleOffset, setScaleOffset] = useState({ x: 0, y: 0 });
 
   useLayoutEffect(() => {
     const canvas = document.getElementById("canvas");
     const ctx = canvas.getContext("2d");
-    //const roughCanvas = rough.canvas(canvas);
+    console.log("canvas height", canvas.height);
+    console.log("canvas width", canvas.width);
+
+    const scaleHeight = canvas.height * scale;
+    const scaleWidth = canvas.width * scale;
+    // 559 908
+    const scaleOffsetX = (scaleWidth - canvas.width) / 2; //454
+    const scaleOffsetY = (scaleHeight - canvas.height) / 2; //280
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
+    setScaleOffset({ x: scaleOffsetX, y: scaleOffsetY });
     ctx.save();
-    ctx.translate(panOffset.x, panOffset.y);
-
+    ctx.translate(
+      panOffset.x * scale - scaleOffsetX,
+      panOffset.y * scale - scaleOffsetY
+    );
+    ctx.scale(scale, scale);
     elements.forEach((e) => {
       if (action === "writing" && selectedElement.id === e.id) return;
       createElement(e);
     });
     ctx.restore();
-  }, [elements, action, selectedElement, panOffset]);
+  }, [elements, action, selectedElement, panOffset, scale]);
   useEffect(() => {
     const undoRedoFunction = (event) => {
       if ((event.metaKey || event.ctrlKey) && event.key === "z") {
@@ -116,17 +129,31 @@ function App() {
     }
   }, [action, selectedElement]);
   useEffect(() => {
-    const panFunction = (event) => {
-      setPanOffset((prevState) => ({
-        x: prevState.x - event.deltaX,
-        y: prevState.y - event.deltaY,
-      }));
+    const panOrZoomFunction = (event) => {
+      if (pressedKeys.has("Meta") || pressedKeys.has("Control")) {
+        onZoom(event.deltaY * -0.01);
+      } else
+        setPanOffset((prevState) => ({
+          x: prevState.x - event.deltaX,
+          y: prevState.y - event.deltaY,
+        }));
     };
 
-    document.addEventListener("wheel", panFunction);
+    document.addEventListener("wheel", panOrZoomFunction);
     return () => {
-      document.removeEventListener("wheel", panFunction);
+      document.removeEventListener("wheel", panOrZoomFunction);
     };
+  }, [pressedKeys]);
+  useLayoutEffect(() => {
+    document.getElementById("root").addEventListener(
+      "wheel",
+      (event) => {
+        if (event.ctrlKey) {
+          event.preventDefault();
+        }
+      },
+      true
+    );
   }, []);
   const getSvgPathFromStroke = (stroke) => {
     if (!stroke.length) return "";
@@ -210,10 +237,7 @@ function App() {
         const on = onLine(x1, y1, x2, y2, clientX, clientY);
         const start = nearPoint(clientX, clientY, x1, y1, "start");
         const end = nearPoint(clientX, clientY, x2, y2, "end");
-        console.log("x1", x1);
-        console.log("x2", x2);
-        console.log("y1", y1);
-        console.log("y2", y2);
+
         return start || end || on;
       }
 
@@ -309,8 +333,10 @@ function App() {
   };
   console.log("selectedElement", selectedElement);
   const getMouseCoordinates = (event) => {
-    const clientX = event.clientX - panOffset.x;
-    const clientY = event.clientY - panOffset.y;
+    const clientX =
+      (event.clientX - panOffset.x * scale + scaleOffset.x) / scale;
+    const clientY =
+      (event.clientY - panOffset.y * scale + scaleOffset.y) / scale;
     return { clientX, clientY };
   };
   const handleMouseDown = (e) => {
@@ -347,7 +373,7 @@ function App() {
       }
     } else {
       const newElement = generateElementType(clientX, clientY);
-      console.log("newElement", newElement);
+      //console.log("newElement", newElement);
 
       setSelectedElement(newElement);
       setElements((state) => [...state, newElement]);
@@ -423,8 +449,6 @@ function App() {
       setElements(elementsCopy, true);
     } else if (action === "moving") {
       if (selectedElement.type === "pencil") {
-        console.log("is pencillllllllllll");
-
         const newPoints = selectedElement.points.map((_, index) => ({
           x: clientX - selectedElement.xOffsets[index],
           y: clientY - selectedElement.yOffsets[index],
@@ -435,7 +459,7 @@ function App() {
           ...elementsCopy[index],
           points: newPoints,
         };
-        console.log("elementsCopy", elementsCopy);
+
         setElements(elementsCopy, true);
       } else {
         const { id, x1, y1, x2, y2, offsetX, offsetY, text } = selectedElement;
@@ -553,11 +577,13 @@ function App() {
   const handleBlur = (e) => {
     const { id, x1, y1 } = selectedElement;
     const text = e.target.value;
-    console.log("text", text);
 
     setAction("none");
     setSelectedElement(null);
     updateElement(id, x1, y1, null, null, text);
+  };
+  const onZoom = (e) => {
+    setScale((state) => Math.min(Math.max(state + e, 0.1), 20));
   };
   return (
     <div>
@@ -598,7 +624,14 @@ function App() {
         />
         <label htmlFor="text">Text</label>
       </div>
+
       <div style={{ position: "fixed", zIndex: 2, bottom: 0, padding: 10 }}>
+        <button onClick={() => onZoom(-0.1)}>-</button>
+        <span onClick={() => setScale(1)}>
+          {new Intl.NumberFormat("en-GB", { style: "percent" }).format(scale)}
+          {scale}
+        </span>
+        <button onClick={() => onZoom(+0.1)}>+</button>
         <button onClick={undo}>Undo</button>
         <button onClick={redo}>Redo</button>
       </div>
@@ -608,10 +641,14 @@ function App() {
           onBlur={handleBlur}
           style={{
             position: "fixed",
-            top: selectedElement.y1 - 3 + panOffset.y,
-            left: selectedElement.x1 + panOffset.x,
+            top:
+              (selectedElement.y1 - 3) * scale +
+              panOffset.y * scale -
+              scaleOffset.y,
+            left:
+              selectedElement.x1 * scale + panOffset.x * scale - scaleOffset.x,
 
-            font: "24px sans-serif",
+            font: `${24 * scale}px sans-serif`,
             margin: 0,
             padding: 0,
             border: 0,
