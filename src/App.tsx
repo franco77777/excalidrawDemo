@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import reactLogo from "./assets/react.svg";
 import viteLogo from "/vite.svg";
 import "./App.css";
@@ -42,8 +42,9 @@ function App() {
   const [action, setAction] = useState("none");
   const [tool, setTool] = useState("line");
   const [selectedElement, setSelectedElement] = useState();
+  const textAreaRef = useRef();
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const canvas = document.getElementById("canvas");
     const ctx = canvas.getContext("2d");
     //const roughCanvas = rough.canvas(canvas);
@@ -54,8 +55,11 @@ function App() {
     // ctx.moveTo(0, 0);
     // ctx.lineTo(500, 500);
     // ctx.stroke();
-    elements.forEach((e) => createElement(e));
-  }, [elements]);
+    elements.forEach((e) => {
+      if (action === "writing" && selectedElement.id === e.id) return;
+      createElement(e);
+    });
+  }, [elements, action, selectedElement]);
   useEffect(() => {
     const undoRedoFunction = (event) => {
       if ((event.metaKey || event.ctrlKey) && event.key === "z") {
@@ -71,6 +75,16 @@ function App() {
       document.removeEventListener("keydown", undoRedoFunction);
     };
   }, [undo, redo]);
+  useEffect(() => {
+    const textArea = textAreaRef.current;
+    if (action === "writing") {
+      setTimeout(() => {
+        textArea.focus();
+        textArea.value = selectedElement.text;
+      }, 0);
+    }
+  }, [action, selectedElement]);
+
   const getSvgPathFromStroke = (stroke) => {
     if (!stroke.length) return "";
 
@@ -116,6 +130,14 @@ function App() {
           ctx.fill(new Path2D(stroke));
         }
 
+        break;
+      case "text":
+        {
+          ctx.beginPath();
+          ctx.textBaseline = "top";
+          ctx.font = "24px sans-serif";
+          ctx.fillText(element.text, element.x1, element.y1);
+        }
         break;
       default:
         break;
@@ -248,13 +270,23 @@ function App() {
         };
         return newElement;
       }
-
+      case "text": {
+        const newElement = {
+          x1: clientX,
+          y1: clientY,
+          text: "",
+          type: tool,
+          id: id,
+        };
+        return newElement;
+      }
       default:
         break;
     }
   };
   console.log("selectedElement", selectedElement);
   const handleMouseDown = (e) => {
+    if (action === "writing") return;
     const { clientX, clientY } = e;
     if (tool === "selection") {
       const element = getElementAtPosition(clientX, clientY, elements);
@@ -285,7 +317,7 @@ function App() {
 
       setSelectedElement(newElement);
       setElements((state) => [...state, newElement]);
-      setAction("drawning");
+      setAction(tool === "text" ? "writing" : "drawning");
     }
   };
 
@@ -362,13 +394,20 @@ function App() {
         console.log("elementsCopy", elementsCopy);
         setElements(elementsCopy, true);
       } else {
-        const { id, x1, y1, x2, y2, offsetX, offsetY } = selectedElement;
+        const { id, x1, y1, x2, y2, offsetX, offsetY, text } = selectedElement;
         const width = x2 - x1;
         const height = y2 - y1;
         const nextX1 = clientX - offsetX;
         const nextY1 = clientY - offsetY;
 
-        updateElement(id, nextX1, nextY1, nextX1 + width, nextY1 + height);
+        updateElement(
+          id,
+          nextX1,
+          nextY1,
+          nextX1 + width,
+          nextY1 + height,
+          text
+        );
       }
     } else if (action === "resizing") {
       const { id, type, position, ...coordinates } = selectedElement;
@@ -398,39 +437,84 @@ function App() {
       }
     }
   };
-  const updateElement = (id, x1, y1, x2, y2) => {
+  const updateElement = (id, x1, y1, x2, y2, text = "null") => {
     const copyElements = [...elements];
     const elementForUpdate = copyElements.find((e) => e.id === id);
     const index = copyElements.findIndex((e) => e.id === id);
-
-    const newElement = {
-      x1: x1,
-      y1: y1,
-      x2: x2,
-      y2: y2,
-      type: elementForUpdate.type,
-      id: id,
-    };
+    let newElement;
+    switch (elementForUpdate.type) {
+      case "rectangle":
+      case "line":
+        {
+          newElement = {
+            x1,
+            y1,
+            x2,
+            y2,
+            type: elementForUpdate.type,
+            id,
+          };
+        }
+        break;
+      case "text":
+        {
+          const ctx = document.getElementById("canvas").getContext("2d");
+          const textWidth = ctx.measureText(text).width;
+          //const textHeight = ctx.measureText('M').width;
+          const textHeight = 24;
+          newElement = {
+            x1,
+            y1,
+            x2: x1 + textWidth,
+            y2: y1 + textHeight,
+            text,
+            type: elementForUpdate.type,
+            id,
+          };
+        }
+        break;
+      default:
+        break;
+    }
 
     copyElements[index] = newElement;
 
     setElements(copyElements, true);
   };
 
-  const handleMouseUp = () => {
+  const handleMouseUp = (e) => {
+    const { clientX, clientY } = e;
     if (selectedElement) {
+      if (
+        selectedElement.type === "text" &&
+        clientX - selectedElement.offsetX === selectedElement.x1 &&
+        clientY - selectedElement.offsetY === selectedElement.y1
+      ) {
+        setAction("writing");
+        return;
+      }
       if (action === "drawning" || action === "resizing") {
         const id = selectedElement.id;
         const currentElement = elements.find((e) => e.id === id);
 
         const { x1, y1, x2, y2 } = adjustElementCoordinates(currentElement);
-        if (tool !== "pencil") updateElement(id, x1, y1, x2, y2);
+        if (tool !== "pencil" && tool !== "text")
+          updateElement(id, x1, y1, x2, y2);
       }
+      if (action === "writing") return;
     }
     setAction("none");
     setSelectedElement(null);
   };
+  const handleBlur = (e) => {
+    const { id, x1, y1 } = selectedElement;
+    const text = e.target.value;
+    console.log("text", text);
 
+    setAction("none");
+    setSelectedElement(null);
+    updateElement(id, x1, y1, null, null, text);
+  };
   return (
     <div>
       <div style={{ position: "fixed", zIndex: 2 }}>
@@ -474,14 +558,16 @@ function App() {
         <button onClick={undo}>Undo</button>
         <button onClick={redo}>Redo</button>
       </div>
-      {/* {action === "writing" ? (
+      {action === "writing" ? (
         <textarea
           ref={textAreaRef}
           onBlur={handleBlur}
           style={{
             position: "fixed",
-            top: selectedElement.y1 - 2 + panOffset.y,
-            left: selectedElement.x1 + panOffset.x,
+            // top: selectedElement.y1 - 2 + panOffset.y,
+            // left: selectedElement.x1 + panOffset.x,
+            top: selectedElement.y1 - 3,
+            left: selectedElement.x1,
             font: "24px sans-serif",
             margin: 0,
             padding: 0,
@@ -494,7 +580,7 @@ function App() {
             zIndex: 2,
           }}
         />
-      ) : null} */}
+      ) : null}
       <canvas
         id="canvas"
         width={window.innerWidth}
