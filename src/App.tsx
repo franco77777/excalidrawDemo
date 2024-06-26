@@ -37,12 +37,44 @@ const useHistory = (initialState) => {
 
   return [history[index], setState, undo, redo];
 };
+const usePressedKeys = () => {
+  const [pressedKeys, setPressedKeys] = useState(new Set());
+
+  useEffect(() => {
+    const handleKeyDown = (event) => {
+      setPressedKeys((prevKeys) => new Set(prevKeys).add(event.key));
+    };
+
+    const handleKeyUp = (event) => {
+      setPressedKeys((prevKeys) => {
+        const updatedKeys = new Set(prevKeys);
+        updatedKeys.delete(event.key);
+        return updatedKeys;
+      });
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("keyup", handleKeyUp);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("keyup", handleKeyUp);
+    };
+  }, []);
+
+  return pressedKeys;
+};
 function App() {
   const [elements, setElements, undo, redo] = useHistory([]);
   const [action, setAction] = useState("none");
   const [tool, setTool] = useState("line");
   const [selectedElement, setSelectedElement] = useState();
+  const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
+  const [startPanMousePosition, setStartPanMousePosition] = useState({
+    x: 0,
+    y: 0,
+  });
   const textAreaRef = useRef();
+  const pressedKeys = usePressedKeys();
 
   useLayoutEffect(() => {
     const canvas = document.getElementById("canvas");
@@ -50,16 +82,15 @@ function App() {
     //const roughCanvas = rough.canvas(canvas);
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    // ctx.strokeRect(10, 10, 100, 100);
-    // ctx.beginPath();
-    // ctx.moveTo(0, 0);
-    // ctx.lineTo(500, 500);
-    // ctx.stroke();
+    ctx.save();
+    ctx.translate(panOffset.x, panOffset.y);
+
     elements.forEach((e) => {
       if (action === "writing" && selectedElement.id === e.id) return;
       createElement(e);
     });
-  }, [elements, action, selectedElement]);
+    ctx.restore();
+  }, [elements, action, selectedElement, panOffset]);
   useEffect(() => {
     const undoRedoFunction = (event) => {
       if ((event.metaKey || event.ctrlKey) && event.key === "z") {
@@ -84,7 +115,19 @@ function App() {
       }, 0);
     }
   }, [action, selectedElement]);
+  useEffect(() => {
+    const panFunction = (event) => {
+      setPanOffset((prevState) => ({
+        x: prevState.x - event.deltaX,
+        y: prevState.y - event.deltaY,
+      }));
+    };
 
+    document.addEventListener("wheel", panFunction);
+    return () => {
+      document.removeEventListener("wheel", panFunction);
+    };
+  }, []);
   const getSvgPathFromStroke = (stroke) => {
     if (!stroke.length) return "";
 
@@ -209,29 +252,9 @@ function App() {
         return clientX >= x1 && clientX <= x2 && clientY >= y1 && clientY <= y2
           ? "inside"
           : null;
-      // default:
-      //   throw new Error(`Type not recognised: ${type}`);
+      default:
+        throw new Error(`Type not recognised: ${type}`);
     }
-    // if (type === "rectangle") {
-    //   const topLeft = nearPoint(clientX, clientY, x1, y1, "tl");
-    //   const topRight = nearPoint(clientX, clientY, x2, y1, "tr");
-    //   const bottonLeft = nearPoint(clientX, clientY, x1, y2, "bl");
-    //   const bottonRight = nearPoint(clientX, clientY, x2, y2, "br");
-    //   const inside =
-    //     clientX >= x1 && clientX <= x2 && clientY >= y1 && clientY <= y2
-    //       ? "inside"
-    //       : null;
-    //   return topLeft || topRight || bottonLeft || bottonRight || inside;
-    // } else {
-    //   const a = { x: x1, y: y1 };
-    //   const b = { x: x2, y: y2 };
-    //   const c = { x: clientX, y: clientY };
-    //   const offset = distance(a, b) - (distance(a, c) + distance(b, c));
-    //   const start = nearPoint(clientX, clientY, x1, y1, "start");
-    //   const end = nearPoint(clientX, clientY, x2, y2, "end");
-    //   const inside = Math.abs(offset) < 1 ? "inside" : null;
-    //   return start || end || inside;
-    // }
   };
 
   const getElementAtPosition = (clientX, clientY, elements) => {
@@ -285,9 +308,20 @@ function App() {
     }
   };
   console.log("selectedElement", selectedElement);
+  const getMouseCoordinates = (event) => {
+    const clientX = event.clientX - panOffset.x;
+    const clientY = event.clientY - panOffset.y;
+    return { clientX, clientY };
+  };
   const handleMouseDown = (e) => {
     if (action === "writing") return;
-    const { clientX, clientY } = e;
+    const { clientX, clientY } = getMouseCoordinates(e);
+
+    if (e.button === 1 || pressedKeys.has(" ")) {
+      setAction("panning");
+      setStartPanMousePosition({ x: clientX, y: clientY });
+      return;
+    }
     if (tool === "selection") {
       const element = getElementAtPosition(clientX, clientY, elements);
 
@@ -354,7 +388,17 @@ function App() {
   };
 
   const handleMouseMove = (e) => {
-    const { clientX, clientY } = e;
+    const { clientX, clientY } = getMouseCoordinates(e);
+    if (action === "panning") {
+      const deltaX = clientX - startPanMousePosition.x;
+      const deltaY = clientY - startPanMousePosition.y;
+      setPanOffset({
+        x: panOffset.x + deltaX,
+        y: panOffset.y + deltaY,
+      });
+      return;
+    }
+
     if (tool === "selection") {
       const element = getElementAtPosition(clientX, clientY, elements);
 
@@ -483,7 +527,7 @@ function App() {
   };
 
   const handleMouseUp = (e) => {
-    const { clientX, clientY } = e;
+    const { clientX, clientY } = getMouseCoordinates(e);
     if (selectedElement) {
       if (
         selectedElement.type === "text" &&
@@ -564,10 +608,9 @@ function App() {
           onBlur={handleBlur}
           style={{
             position: "fixed",
-            // top: selectedElement.y1 - 2 + panOffset.y,
-            // left: selectedElement.x1 + panOffset.x,
-            top: selectedElement.y1 - 3,
-            left: selectedElement.x1,
+            top: selectedElement.y1 - 3 + panOffset.y,
+            left: selectedElement.x1 + panOffset.x,
+
             font: "24px sans-serif",
             margin: 0,
             padding: 0,
