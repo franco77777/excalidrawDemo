@@ -77,6 +77,7 @@ function App() {
   const pressedKeys = usePressedKeys();
   const [scale, setScale] = useState(1);
   const [scaleOffset, setScaleOffset] = useState({ x: 0, y: 0 });
+  const [imageUrl, setImageUrl] = useState("");
 
   useLayoutEffect(() => {
     const canvas = document.getElementById("canvas");
@@ -209,6 +210,21 @@ function App() {
           ctx.fillText(element.text, element.x1, element.y1);
         }
         break;
+      case "image":
+        {
+          const image = new Image();
+          image.src = element.src;
+
+          ctx.beginPath();
+          ctx.drawImage(
+            image,
+            element.x1,
+            element.y1,
+            element.x2 - element.x1,
+            element.y2 - element.y1
+          );
+        }
+        break;
       default:
         break;
     }
@@ -240,7 +256,7 @@ function App() {
 
         return start || end || on;
       }
-
+      case "image":
       case "rectangle": {
         const topLeft = nearPoint(clientX, clientY, x1, y1, "tl");
         const topRight = nearPoint(clientX, clientY, x2, y1, "tr");
@@ -321,10 +337,28 @@ function App() {
         const newElement = {
           x1: clientX,
           y1: clientY,
+
           text: "",
           type: tool,
           id: id,
         };
+        return newElement;
+      }
+      case "image": {
+        if (!imageUrl) return "";
+        const input = document.getElementById("inputFile");
+
+        input.value = null;
+        const newElement = {
+          x1: clientX,
+          y1: clientY,
+          x2: clientX + 100,
+          y2: clientY + 100,
+          src: imageUrl,
+          type: tool,
+          id: id,
+        };
+
         return newElement;
       }
       default:
@@ -342,12 +376,14 @@ function App() {
   const handleMouseDown = (e) => {
     if (action === "writing") return;
     const { clientX, clientY } = getMouseCoordinates(e);
+
     const element = getElementAtPosition(clientX, clientY, elements);
     if (e.button === 1 || pressedKeys.has(" ")) {
       setAction("panning");
       setStartPanMousePosition({ x: clientX, y: clientY });
       return;
     }
+
     if (element) {
       if (element.type === "pencil") {
         const xOffsets = element.points.map((point) => clientX - point.x);
@@ -370,10 +406,12 @@ function App() {
     } else {
       const newElement = generateElementType(clientX, clientY);
       //console.log("newElement", newElement);
-
-      setSelectedElement(newElement);
-      setElements((state) => [...state, newElement]);
-      setAction(tool === "text" ? "writing" : "drawning");
+      if (newElement) {
+        setSelectedElement(newElement);
+        setElements((state) => [...state, newElement]);
+        setAction(tool === "text" ? "writing" : "drawning");
+        setImageUrl("");
+      }
     }
   };
 
@@ -413,7 +451,7 @@ function App() {
     const { clientX, clientY } = getMouseCoordinates(e);
 
     const element = getElementAtPosition(clientX, clientY, elements);
-
+    //    if (action !== "drawning")
     e.target.style.cursor = element
       ? cursorForPosition(element.position)
       : "default";
@@ -548,6 +586,7 @@ function App() {
 
   const handleMouseUp = (e) => {
     const { clientX, clientY } = getMouseCoordinates(e);
+
     if (selectedElement) {
       if (
         selectedElement.type === "text" &&
@@ -562,11 +601,12 @@ function App() {
         const currentElement = elements.find((e) => e.id === id);
 
         const { x1, y1, x2, y2 } = adjustElementCoordinates(currentElement);
-        if (tool !== "pencil" && tool !== "text")
+        if (tool !== "pencil" && tool !== "text" && tool !== "image")
           updateElement(id, x1, y1, x2, y2);
       }
       if (action === "writing") return;
     }
+
     setAction("none");
     setSelectedElement(null);
   };
@@ -581,6 +621,26 @@ function App() {
   const onZoom = (e) => {
     setScale((state) => Math.min(Math.max(state + e, 0.1), 20));
   };
+  const openInputFile = (e) => {
+    e.preventDefault();
+    const input = document.getElementById("inputFile");
+    setTool("image");
+    input.click();
+  };
+  const onFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    //event.preventDefault();
+    const files = event.target.files;
+    if (files) {
+      if (files.length === 0) return;
+      if (files[0].type.split("/")[0] !== "image") return;
+      const imageUrl = URL.createObjectURL(files[0]);
+      setAction("addingImage");
+      setTool("image");
+      setImageUrl(imageUrl);
+    }
+  };
+  console.log("toll", tool);
+
   return (
     <div>
       <div style={{ position: "fixed", zIndex: 2 }}>
@@ -612,6 +672,21 @@ function App() {
           onChange={() => setTool("text")}
         />
         <label htmlFor="text">Text</label>
+        <input
+          type="radio"
+          id="image"
+          checked={tool === "image"}
+          onChange={() => setTool("image")}
+        />
+        <label htmlFor="text" onClick={openInputFile}>
+          Image
+        </label>
+        <input
+          type="file"
+          className="hidden"
+          id="inputFile"
+          onChange={onFileSelect}
+        />
       </div>
 
       <div style={{ position: "fixed", zIndex: 2, bottom: 0, padding: 10 }}>
