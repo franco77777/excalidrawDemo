@@ -361,6 +361,8 @@ function App() {
         if (width > 2000 || height > 2000) divider = 5;
         const X = divider ? width / divider : width;
         const Y = divider ? height / divider : height;
+        const offsetX = X / 2;
+        const offsetY = Y / 2;
         console.log("X", X);
         console.log("Y", Y);
         console.log("width", width);
@@ -369,10 +371,10 @@ function App() {
         console.log("divider", divider);
         img.src = "";
         const newElement = {
-          x1: clientX,
-          y1: clientY,
-          x2: clientX + X,
-          y2: clientY + Y,
+          x1: clientX - offsetX,
+          y1: clientY - offsetY,
+          x2: clientX + offsetX,
+          y2: clientY + offsetY,
           src: imageUrl,
           type: tool,
           id: id,
@@ -624,24 +626,24 @@ function App() {
   const handleMouseUp = (e) => {
     const { clientX, clientY } = getMouseCoordinates(e);
 
-    // if (selectedElement) {
-    //   if (
-    //     selectedElement.type === "text" &&
-    //     clientX - selectedElement.offsetX === selectedElement.x1 &&
-    //     clientY - selectedElement.offsetY === selectedElement.y1
-    //   ) {
-    //     setAction("writing");
-    //     return;
-    //   }
-    //   if (action === "drawning" || action === "resizing") {
-    //     const id = selectedElement.id;
-    //     const currentElement = elements.find((e) => e.id === id);
-    //     const { x1, y1, x2, y2 } = adjustElementCoordinates(currentElement);
-    //     if (tool !== "pencil" && tool !== "text" && tool !== "image")
-    //       updateElement(id, x1, y1, x2, y2);
-    //   }
-    //   if (action === "writing") return;
-    // }
+    if (selectedElement) {
+      if (
+        selectedElement.type === "text" &&
+        clientX - selectedElement.offsetX === selectedElement.x1 &&
+        clientY - selectedElement.offsetY === selectedElement.y1
+      ) {
+        setAction("writing");
+        return;
+      }
+      if (action === "drawning" || action === "resizing") {
+        const id = selectedElement.id;
+        const currentElement = elements.find((e) => e.id === id);
+        const { x1, y1, x2, y2 } = adjustElementCoordinates(currentElement);
+        if (tool !== "pencil" && tool !== "text" && tool !== "image")
+          updateElement(id, x1, y1, x2, y2);
+      }
+      if (action === "writing") return;
+    }
     setAction("none");
     setSelectedElement(null);
   };
