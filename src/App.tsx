@@ -78,6 +78,7 @@ function App() {
   const [scale, setScale] = useState(1);
   const [scaleOffset, setScaleOffset] = useState({ x: 0, y: 0 });
   const [imageUrl, setImageUrl] = useState("");
+  const [imageSize, setImageSize] = useState();
 
   useLayoutEffect(() => {
     const canvas = document.getElementById("canvas");
@@ -171,7 +172,7 @@ function App() {
     d.push("Z");
     return d.join(" ");
   };
-  const createElement = (element) => {
+  const createElement = async (element) => {
     const canvas = document.getElementById("canvas");
     const ctx = canvas.getContext("2d");
 
@@ -215,7 +216,6 @@ function App() {
           const image = new Image();
           image.src = element.src;
 
-          ctx.beginPath();
           ctx.drawImage(
             image,
             element.x1,
@@ -346,14 +346,33 @@ function App() {
       }
       case "image": {
         if (!imageUrl) return "";
-        const input = document.getElementById("inputFile");
 
+        const img = document.getElementById("img");
+
+        const input = document.getElementById("inputFile");
         input.value = null;
+        let divider = 0;
+
+        const width = img.naturalWidth;
+        const height = img.naturalHeight;
+        if (width > 500 || height > 500) divider = 2;
+        if (width > 1000 || height > 1000) divider = 3;
+        if (width > 1500 || height > 1500) divider = 4;
+        if (width > 2000 || height > 2000) divider = 5;
+        const X = divider ? width / divider : width;
+        const Y = divider ? height / divider : height;
+        console.log("X", X);
+        console.log("Y", Y);
+        console.log("width", width);
+        console.log("dheight", height);
+
+        console.log("divider", divider);
+        img.src = "";
         const newElement = {
           x1: clientX,
           y1: clientY,
-          x2: clientX + 100,
-          y2: clientY + 100,
+          x2: clientX + X,
+          y2: clientY + Y,
           src: imageUrl,
           type: tool,
           id: id,
@@ -377,40 +396,45 @@ function App() {
     if (action === "writing") return;
     const { clientX, clientY } = getMouseCoordinates(e);
 
-    const element = getElementAtPosition(clientX, clientY, elements);
     if (e.button === 1 || pressedKeys.has(" ")) {
       setAction("panning");
       setStartPanMousePosition({ x: clientX, y: clientY });
       return;
     }
 
-    if (element) {
-      if (element.type === "pencil") {
-        const xOffsets = element.points.map((point) => clientX - point.x);
-        const yOffsets = element.points.map((point) => clientY - point.y);
-        setSelectedElement({ ...element, xOffsets, yOffsets });
-      } else {
-        const offsetX = clientX - element.x1;
-        const offsetY = clientY - element.y1;
+    if (tool === "selection") {
+      const element = getElementAtPosition(clientX, clientY, elements);
+      if (element) {
+        if (element.type === "pencil") {
+          const xOffsets = element.points.map((point) => clientX - point.x);
+          const yOffsets = element.points.map((point) => clientY - point.y);
+          setSelectedElement({ ...element, xOffsets, yOffsets });
+        } else {
+          const offsetX = clientX - element.x1;
+          const offsetY = clientY - element.y1;
 
-        setSelectedElement({ ...element, offsetX, offsetY });
-      }
+          setSelectedElement({ ...element, offsetX, offsetY });
+        }
 
-      setElements((prevState) => prevState);
+        setElements((prevState) => prevState);
 
-      if (element.position === "inside") {
-        setAction("moving");
-      } else {
-        setAction("resizing");
+        if (element.position === "inside") {
+          setAction("moving");
+        } else {
+          setAction("resizing");
+        }
       }
     } else {
       const newElement = generateElementType(clientX, clientY);
-      //console.log("newElement", newElement);
+      console.log("newElement", newElement);
       if (newElement) {
+        console.log("entering");
+
         setSelectedElement(newElement);
         setElements((state) => [...state, newElement]);
-        setAction(tool === "text" ? "writing" : "drawning");
         setImageUrl("");
+        if (action === "addingImage") return;
+        setAction(tool === "text" ? "writing" : "drawning");
       }
     }
   };
@@ -448,13 +472,13 @@ function App() {
   };
 
   const handleMouseMove = (e) => {
+    if (action === "addingImage") return;
     const { clientX, clientY } = getMouseCoordinates(e);
-
     const element = getElementAtPosition(clientX, clientY, elements);
-    //    if (action !== "drawning")
-    e.target.style.cursor = element
-      ? cursorForPosition(element.position)
-      : "default";
+    if (tool === "selection")
+      e.target.style.cursor = element
+        ? cursorForPosition(element.position)
+        : "default";
     if (action === "panning") {
       const deltaX = clientX - startPanMousePosition.x;
       const deltaY = clientY - startPanMousePosition.y;
@@ -557,6 +581,19 @@ function App() {
           };
         }
         break;
+      case "image":
+        {
+          newElement = {
+            x1,
+            y1,
+            x2,
+            y2,
+            type: elementForUpdate.type,
+            src: elementForUpdate.src,
+            id,
+          };
+        }
+        break;
       case "text":
         {
           const ctx = document.getElementById("canvas").getContext("2d");
@@ -587,26 +624,24 @@ function App() {
   const handleMouseUp = (e) => {
     const { clientX, clientY } = getMouseCoordinates(e);
 
-    if (selectedElement) {
-      if (
-        selectedElement.type === "text" &&
-        clientX - selectedElement.offsetX === selectedElement.x1 &&
-        clientY - selectedElement.offsetY === selectedElement.y1
-      ) {
-        setAction("writing");
-        return;
-      }
-      if (action === "drawning" || action === "resizing") {
-        const id = selectedElement.id;
-        const currentElement = elements.find((e) => e.id === id);
-
-        const { x1, y1, x2, y2 } = adjustElementCoordinates(currentElement);
-        if (tool !== "pencil" && tool !== "text" && tool !== "image")
-          updateElement(id, x1, y1, x2, y2);
-      }
-      if (action === "writing") return;
-    }
-
+    // if (selectedElement) {
+    //   if (
+    //     selectedElement.type === "text" &&
+    //     clientX - selectedElement.offsetX === selectedElement.x1 &&
+    //     clientY - selectedElement.offsetY === selectedElement.y1
+    //   ) {
+    //     setAction("writing");
+    //     return;
+    //   }
+    //   if (action === "drawning" || action === "resizing") {
+    //     const id = selectedElement.id;
+    //     const currentElement = elements.find((e) => e.id === id);
+    //     const { x1, y1, x2, y2 } = adjustElementCoordinates(currentElement);
+    //     if (tool !== "pencil" && tool !== "text" && tool !== "image")
+    //       updateElement(id, x1, y1, x2, y2);
+    //   }
+    //   if (action === "writing") return;
+    // }
     setAction("none");
     setSelectedElement(null);
   };
@@ -628,12 +663,15 @@ function App() {
     input.click();
   };
   const onFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
-    //event.preventDefault();
+    event.preventDefault();
     const files = event.target.files;
     if (files) {
+      const img = document.getElementById("img");
+
       if (files.length === 0) return;
       if (files[0].type.split("/")[0] !== "image") return;
       const imageUrl = URL.createObjectURL(files[0]);
+      img.src = imageUrl;
       setAction("addingImage");
       setTool("image");
       setImageUrl(imageUrl);
@@ -643,7 +681,20 @@ function App() {
 
   return (
     <div>
+      <img
+        src=""
+        alt=""
+        className="hidden pointer-events-none outline-none"
+        id="img"
+      />
       <div style={{ position: "fixed", zIndex: 2 }}>
+        <input
+          type="radio"
+          id="selection"
+          checked={tool === "selection"}
+          onChange={() => setTool("selection")}
+        />
+        <label htmlFor="selection">Selection</label>
         <input
           type="radio"
           id="line"
