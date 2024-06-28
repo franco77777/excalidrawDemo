@@ -9,6 +9,7 @@ import Pencil from "./components/pencil";
 import Eraser from "./components/eraser";
 import Shape from "./components/shape";
 import Text from "./components/text";
+import ImageBar from "./components/image";
 
 const useHistory = (initialState) => {
   const [index, setIndex] = useState(0);
@@ -676,12 +677,7 @@ function App() {
   const onZoom = (e) => {
     setScale((state) => Math.min(Math.max(state + e, 0.1), 20));
   };
-  const openInputFile = (e) => {
-    e.preventDefault();
-    const input = document.getElementById("inputFile");
-    setTool("image");
-    input.click();
-  };
+
   const onFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     event.preventDefault();
     const files = event.target.files;
@@ -697,6 +693,7 @@ function App() {
       setImageUrl(imageUrl);
     }
   };
+
   console.log("toll", tool);
 
   return (
@@ -715,10 +712,6 @@ function App() {
           </span>
           <button onClick={() => onZoom(+0.1)}>+</button>
         </div>
-        {/* <div className="flex gap-1 items-center">
-          <button onClick={undo}>Undo</button>
-          <button onClick={redo}>Redo</button>
-        </div> */}
         <div className="flex gap-1 items-center ">
           <Select tool={tool} setTool={setTool} />
           <Line tool={tool} setTool={setTool} />
@@ -726,15 +719,7 @@ function App() {
           <Eraser tool={tool} setTool={setTool} />
           <Shape tool={tool} setTool={setTool} />
           <Text tool={tool} setTool={setTool} />
-          <input
-            type="radio"
-            id="image"
-            checked={tool === "image"}
-            onChange={() => setTool("image")}
-          />
-          <label htmlFor="text" onClick={openInputFile}>
-            Image
-          </label>
+          <ImageBar setTool={setTool} />
           <input
             type="file"
             className="hidden"

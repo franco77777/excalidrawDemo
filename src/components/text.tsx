@@ -1,7 +1,12 @@
 const Text = ({ setTool, tool }) => {
   return (
     <>
-      <div onClick={() => setTool("text")} className="text-blue-500">
+      <div
+        onClick={() => setTool("text")}
+        className={`${
+          tool === "text" ? "text-blue-500 scale-110" : "hover:scale-110"
+        } relative      duration-300 ease-in-out cursor-pointer`}
+      >
         <svg
           width="54"
           height="44"
@@ -25,7 +30,7 @@ const Text = ({ setTool, tool }) => {
             width="51"
             height="42"
             rx="4"
-            stroke="#E3E2E4"
+            stroke={`${tool === "text" ? "rgb(59 130 246)" : "#E3E2E4"}`}
             stroke-dasharray="2 2"
           ></rect>
         </svg>

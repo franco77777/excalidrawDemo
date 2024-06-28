@@ -6,7 +6,7 @@ const Shape = ({ setTool, tool }) => {
           tool === "rectangle"
             ? "text-blue-500 scale-110"
             : "text-[#FFDF6B] hover:scale-110"
-        } relative w-24 h-full bg-black text-blue-500  duration-300 ease-in-out cursor-pointer`}
+        } relative w-24 h-full   duration-300 ease-in-out cursor-pointer`}
         onClick={() => setTool("rectangle")}
       >
         <svg
