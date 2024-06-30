@@ -13,6 +13,8 @@ import ImageBar from "./components/image";
 import Options from "./components/options";
 import LineOptions from "./components/lineOptions";
 import PencilOptions from "./components/pencilOptions";
+import ShapeOptions from "./components/shapeOptions";
+import TextOptions from "./components/textOptions";
 
 const useHistory = (initialState) => {
   const [index, setIndex] = useState(0);
@@ -94,6 +96,9 @@ function App() {
   const [lineWidth, setLineWidth] = useState(1);
   const [pencilWidth, setPencilWidth] = useState(10);
   const [colorPencil, setColorPencil] = useState("rgb(255 255 255)");
+  const [colorShape, setColorShape] = useState("rgb(255 255 255)");
+  const [colorText, setColorText] = useState("rgb(255 255 255)");
+  const [textSize, setTextSize] = useState(24);
 
   useLayoutEffect(() => {
     const canvas = document.getElementById("canvas");
@@ -108,9 +113,9 @@ function App() {
     const scaleOffsetY = (scaleHeight - canvas.height) / 2; //280
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    //ctx.strokeStyle = "red";
-    //ctx.fillStyle = "blue";
-    ctx.lineWidth = 10;
+    ctx.strokeStyle = "red";
+    ctx.fillStyle = "blue";
+    ctx.lineWidth = 2;
 
     setScaleOffset({ x: scaleOffsetX, y: scaleOffsetY });
     ctx.save();
@@ -206,6 +211,7 @@ function App() {
         break;
       case "rectangle":
         ctx.beginPath();
+        ctx.strokeStyle = element.color;
         ctx.strokeRect(
           element.x1,
           element.y1,
@@ -228,8 +234,9 @@ function App() {
       case "text":
         {
           ctx.beginPath();
+          ctx.fillStyle = element.color;
           ctx.textBaseline = "top";
-          ctx.font = "24px sans-serif";
+          ctx.font = `${element.size}px sans-serif`;
           ctx.fillText(element.text, element.x1, element.y1);
         }
         break;
@@ -335,7 +342,19 @@ function App() {
       id = 1;
     }
     switch (tool) {
-      case "rectangle":
+      case "rectangle": {
+        const newElement = {
+          lineWidth,
+          color: colorShape,
+          x1: clientX,
+          y1: clientY,
+          x2: clientX,
+          y2: clientY,
+          type: tool,
+          id: id,
+        };
+        return newElement;
+      }
       case "line": {
         const newElement = {
           lineWidth,
@@ -363,7 +382,8 @@ function App() {
         const newElement = {
           x1: clientX,
           y1: clientY,
-
+          color: colorText,
+          size: textSize,
           text: "",
           type: tool,
           id: id,
@@ -638,15 +658,18 @@ function App() {
       case "text":
         {
           const ctx = document.getElementById("canvas").getContext("2d");
-          ctx.font = "24px sans-serif";
+          const textHeight = elementForUpdate.size;
+          ctx.font = `${textHeight}px sans-serif`;
           const textWidth = ctx.measureText(text).width;
           //const textHeight = ctx.measureText('M').width;
-          const textHeight = 24;
+
           newElement = {
+            color: elementForUpdate.color,
+            size: textHeight,
             x1,
             y1,
             x2: x1 + textWidth,
-            y2: y1 + textHeight,
+            y2: y1 + Number.parseInt(textHeight),
             text,
             type: elementForUpdate.type,
             id,
@@ -769,12 +792,25 @@ function App() {
           setColorPencil={setColorPencil}
           setPencilWidth={setPencilWidth}
         />
+        <ShapeOptions
+          tool={tool}
+          colorShape={colorShape}
+          setColorShape={setColorShape}
+        />
+        <TextOptions
+          tool={tool}
+          colorText={colorText}
+          setColorText={setColorText}
+          setTextSize={setTextSize}
+          selectedElement={selectedElement}
+        />
       </section>
       {action === "writing" ? (
         <textarea
           ref={textAreaRef}
           onBlur={handleBlur}
           style={{
+            color: `${selectedElement ? selectedElement.color : colorText}`,
             position: "fixed",
             top:
               (selectedElement.y1 - 3) * scale +
@@ -783,7 +819,9 @@ function App() {
             left:
               selectedElement.x1 * scale + panOffset.x * scale - scaleOffset.x,
 
-            font: `${24 * scale}px sans-serif`,
+            font: `${
+              selectedElement ? selectedElement.size * scale : 24 * scale
+            }px sans-serif`,
             margin: 0,
             padding: 0,
             border: 0,
