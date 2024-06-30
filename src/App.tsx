@@ -12,6 +12,7 @@ import Text from "./components/text";
 import ImageBar from "./components/image";
 import Options from "./components/options";
 import LineOptions from "./components/lineOptions";
+import PencilOptions from "./components/pencilOptions";
 
 const useHistory = (initialState) => {
   const [index, setIndex] = useState(0);
@@ -91,6 +92,8 @@ function App() {
 
   const [colorLine, setColorLine] = useState("rgb(255 255 255)");
   const [lineWidth, setLineWidth] = useState(1);
+  const [pencilWidth, setPencilWidth] = useState(10);
+  const [colorPencil, setColorPencil] = useState("rgb(255 255 255)");
 
   useLayoutEffect(() => {
     const canvas = document.getElementById("canvas");
@@ -105,8 +108,9 @@ function App() {
     const scaleOffsetY = (scaleHeight - canvas.height) / 2; //280
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    //ctx.strokeStyle = "white";
-    ctx.fillStyle = "white";
+    //ctx.strokeStyle = "red";
+    //ctx.fillStyle = "blue";
+    ctx.lineWidth = 10;
 
     setScaleOffset({ x: scaleOffsetX, y: scaleOffsetY });
     ctx.save();
@@ -213,9 +217,10 @@ function App() {
         {
           const stroke = getSvgPathFromStroke(
             getStroke(element.points, {
-              size: 5,
+              size: element.pencilWidth,
             })
           );
+          ctx.fillStyle = element.colorPencil;
           ctx.fill(new Path2D(stroke));
         }
 
@@ -346,6 +351,8 @@ function App() {
       }
       case "pencil": {
         const newElement = {
+          colorPencil,
+          pencilWidth,
           points: [{ x: clientX, y: clientY }],
           type: tool,
           id: id,
@@ -755,6 +762,12 @@ function App() {
           colorLine={colorLine}
           setColorLine={setColorLine}
           setLineWidth={setLineWidth}
+        />
+        <PencilOptions
+          tool={tool}
+          colorPencil={colorPencil}
+          setColorPencil={setColorPencil}
+          setPencilWidth={setPencilWidth}
         />
       </section>
       {action === "writing" ? (
