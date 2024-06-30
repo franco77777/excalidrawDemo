@@ -1,0 +1,19 @@
+/* input{
+    accent-color: rgb(156 163 175);
+    background-color: white;
+    } */
+input::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        appearance: none;
+        width: 25px;
+        height: 25px;
+        background: #04AA6D;
+        cursor: pointer;
+      }
+      
+input::-moz-range-thumb {
+        width: 25px;
+        height: 25px;
+        background: #04AA6D;
+        cursor: pointer;
+      }

@@ -10,6 +10,8 @@ import Eraser from "./components/eraser";
 import Shape from "./components/shape";
 import Text from "./components/text";
 import ImageBar from "./components/image";
+import Options from "./components/options";
+import LineOptions from "./components/lineOptions";
 
 const useHistory = (initialState) => {
   const [index, setIndex] = useState(0);
@@ -86,7 +88,9 @@ function App() {
   const [scale, setScale] = useState(1);
   const [scaleOffset, setScaleOffset] = useState({ x: 0, y: 0 });
   const [imageUrl, setImageUrl] = useState("");
-  const [imageSize, setImageSize] = useState();
+
+  const [colorLine, setColorLine] = useState("rgb(255 255 255)");
+  const [lineWidth, setLineWidth] = useState(1);
 
   useLayoutEffect(() => {
     const canvas = document.getElementById("canvas");
@@ -101,6 +105,9 @@ function App() {
     const scaleOffsetY = (scaleHeight - canvas.height) / 2; //280
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
+    //ctx.strokeStyle = "white";
+    ctx.fillStyle = "white";
+
     setScaleOffset({ x: scaleOffsetX, y: scaleOffsetY });
     ctx.save();
     ctx.translate(
@@ -187,6 +194,8 @@ function App() {
     switch (element.type) {
       case "line":
         ctx.beginPath();
+        ctx.strokeStyle = element.color;
+        ctx.lineWidth = element.lineWidth;
         ctx.moveTo(element.x1, element.y1);
         ctx.lineTo(element.x2, element.y2);
         ctx.stroke();
@@ -324,6 +333,8 @@ function App() {
       case "rectangle":
       case "line": {
         const newElement = {
+          lineWidth,
+          color: colorLine,
           x1: clientX,
           y1: clientY,
           x2: clientX,
@@ -593,6 +604,8 @@ function App() {
       case "line":
         {
           newElement = {
+            lineWidth: elementForUpdate.lineWidth,
+            color: elementForUpdate.color,
             x1,
             y1,
             x2,
@@ -670,6 +683,12 @@ function App() {
     const { id, x1, y1 } = selectedElement;
     const text = e.target.value;
 
+    if (!text) {
+      console.log("no text");
+      setAction("none");
+      setSelectedElement(null);
+      return;
+    }
     setAction("none");
     setSelectedElement(null);
     updateElement(id, x1, y1, null, null, text);
@@ -704,31 +723,40 @@ function App() {
         className="hidden pointer-events-none outline-none"
         id="img"
       />
-      <section className="overflow-hidden p-4 text-white z-50 fixed bottom-2 left-1/2 -translate-x-1/2 flex gap-4 bg-black h-14 rounded-2xl">
-        <div className="flex gap-1 items-center">
-          <button onClick={() => onZoom(-0.1)}>-</button>
-          <span onClick={() => setScale(1)}>
-            {new Intl.NumberFormat("en-GB", { style: "percent" }).format(scale)}
-          </span>
-          <button onClick={() => onZoom(+0.1)}>+</button>
+      <section className=" fixed bottom-2 left-1/2 -translate-x-1/2 z-50 bg-transparent">
+        <div className="overflow-hidden flex gap-4 p-4 text-white z-50 w-full bg-black border-gray-500 border-[1px] h-14 rounded-2xl">
+          <div className="flex gap-1 items-center">
+            <button onClick={() => onZoom(-0.1)}>-</button>
+            <span onClick={() => setScale(1)}>
+              {new Intl.NumberFormat("en-GB", { style: "percent" }).format(
+                scale
+              )}
+            </span>
+            <button onClick={() => onZoom(+0.1)}>+</button>
+          </div>
+          <div className="flex gap-1 items-center ">
+            <Select tool={tool} setTool={setTool} />
+            <Line tool={tool} setTool={setTool} />
+            <Pencil tool={tool} setTool={setTool} />
+            <Eraser tool={tool} setTool={setTool} />
+            <Shape tool={tool} setTool={setTool} />
+            <Text tool={tool} setTool={setTool} />
+            <ImageBar setTool={setTool} />
+            <input
+              type="file"
+              className="hidden"
+              id="inputFile"
+              onChange={onFileSelect}
+            />
+          </div>
         </div>
-        <div className="flex gap-1 items-center ">
-          <Select tool={tool} setTool={setTool} />
-          <Line tool={tool} setTool={setTool} />
-          <Pencil tool={tool} setTool={setTool} />
-          <Eraser tool={tool} setTool={setTool} />
-          <Shape tool={tool} setTool={setTool} />
-          <Text tool={tool} setTool={setTool} />
-          <ImageBar setTool={setTool} />
-          <input
-            type="file"
-            className="hidden"
-            id="inputFile"
-            onChange={onFileSelect}
-          />
-        </div>
+        <LineOptions
+          tool={tool}
+          colorLine={colorLine}
+          setColorLine={setColorLine}
+          setLineWidth={setLineWidth}
+        />
       </section>
-
       {action === "writing" ? (
         <textarea
           ref={textAreaRef}
@@ -753,6 +781,7 @@ function App() {
             background: "transparent",
             zIndex: 2,
           }}
+          className="text-white"
         />
       ) : null}
       <canvas
@@ -764,9 +793,7 @@ function App() {
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
         style={{ position: "absolute", zIndex: 1 }}
-      >
-        Canvas
-      </canvas>
+      ></canvas>
     </div>
   );
 }
