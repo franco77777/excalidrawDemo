@@ -220,7 +220,7 @@ function App() {
         ctx.stroke();
         if (element.fillStyle) {
           ctx.fillStyle = element.color;
-          ctx.strokeStyle = "transparent";
+          ctx.strokeStyle = element.color;
           ctx.fill();
         } else {
           ctx.strokeStyle = element.color;
@@ -818,7 +818,14 @@ function App() {
   };
 
   console.log("toll", tool);
-
+  const ChangeSize = () => {
+    if (textSize === 34) return 5;
+    if (textSize === 30) return 4;
+    if (textSize === 24) return 3;
+    if (textSize === 20) return 2;
+    if (textSize === 14) return 2;
+    if (textSize === 10) return 1;
+  };
   return (
     <div>
       <img
@@ -879,7 +886,7 @@ function App() {
           colorText={colorText}
           setColorText={setColorText}
           setTextSize={setTextSize}
-          selectedElement={selectedElement}
+          textSize={textSize}
         />
       </section>
       {action === "writing" ? (
@@ -890,7 +897,7 @@ function App() {
             color: `${selectedElement ? selectedElement.color : colorText}`,
             position: "fixed",
             top:
-              (selectedElement.y1 - 3) * scale +
+              (selectedElement.y1 - ChangeSize()) * scale +
               panOffset.y * scale -
               scaleOffset.y,
             left:
