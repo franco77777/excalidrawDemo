@@ -99,6 +99,7 @@ function App() {
   const [colorShape, setColorShape] = useState("rgb(255 255 255)");
   const [colorText, setColorText] = useState("rgb(255 255 255)");
   const [textSize, setTextSize] = useState(24);
+  const [fillStyle, setFillStyle] = useState(false);
 
   useLayoutEffect(() => {
     const canvas = document.getElementById("canvas");
@@ -116,6 +117,8 @@ function App() {
     ctx.strokeStyle = "red";
     ctx.fillStyle = "blue";
     ctx.lineWidth = 2;
+
+    //change the size of one rectangle, then redraw both of them
 
     setScaleOffset({ x: scaleOffsetX, y: scaleOffsetY });
     ctx.save();
@@ -210,14 +213,28 @@ function App() {
         ctx.stroke();
         break;
       case "rectangle":
-        ctx.beginPath();
-        ctx.strokeStyle = element.color;
-        ctx.strokeRect(
-          element.x1,
-          element.y1,
-          element.x2 - element.x1,
-          element.y2 - element.y1
-        );
+        if (element.fillStyle) {
+          ctx.beginPath();
+          ctx.rect(
+            element.x1,
+            element.y1,
+            element.x2 - element.x1,
+            element.y2 - element.y1
+          );
+          ctx.fillStyle = element.color;
+          ctx.fill();
+        } else {
+          ctx.beginPath();
+
+          ctx.strokeStyle = element.color;
+          ctx.strokeRect(
+            element.x1,
+            element.y1,
+            element.x2 - element.x1,
+            element.y2 - element.y1
+          );
+        }
+
         break;
       case "pencil":
         {
@@ -344,6 +361,7 @@ function App() {
     switch (tool) {
       case "rectangle": {
         const newElement = {
+          fillStyle,
           lineWidth,
           color: colorShape,
           x1: clientX,
@@ -631,6 +649,7 @@ function App() {
       case "line":
         {
           newElement = {
+            fillStyle: elementForUpdate.fillStyle,
             lineWidth: elementForUpdate.lineWidth,
             color: elementForUpdate.color,
             x1,
@@ -796,6 +815,8 @@ function App() {
           tool={tool}
           colorShape={colorShape}
           setColorShape={setColorShape}
+          setFillStyle={setFillStyle}
+          fillStyle={fillStyle}
         />
         <TextOptions
           tool={tool}

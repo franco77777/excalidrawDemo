@@ -23,7 +23,7 @@ const TextOptions = ({
           className="w-10 h-6 text-white bg-black outline-none text-center border-[1px] border-gray-500 rounded"
           onChange={SetTextSize}
         /> */}
-        <VerticalBar />
+        {/* <VerticalBar /> */}
         <ColorOptions setColor={setColorText} color={colorText} />
       </div>
     </>

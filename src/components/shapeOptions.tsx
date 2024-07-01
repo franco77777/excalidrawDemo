@@ -2,7 +2,13 @@ import { Slash } from "lucide-react";
 import VerticalBar from "./verticalBar";
 import ColorOptions from "./colorOptions";
 
-const ShapeOptions = ({ tool, colorShape, setColorShape }) => {
+const ShapeOptions = ({
+  tool,
+  colorShape,
+  setColorShape,
+  setFillStyle,
+  fillStyle,
+}) => {
   return (
     <>
       <div
@@ -10,11 +16,14 @@ const ShapeOptions = ({ tool, colorShape, setColorShape }) => {
   flex gap-4 items-center text-white h-10 w-[90%]  p-2 absolute -z-10  duration-300 ease-in-out rounded-t-lg left-1/2 -translate-x-1/2 bg-black border-x-[1px] border-t-[1px] border-gray-500`}
       >
         <svg
+          onClick={() => setFillStyle(false)}
           width="20"
           height="20"
           viewBox="0 0 20 20"
           xmlns="http://www.w3.org/2000/svg"
-          className="cursor-pointer hover:scale-110 duration-150 "
+          className={`${
+            fillStyle ? "" : "bg-blue-500"
+          } cursor-pointer hover:scale-110 duration-150 rounded `}
         >
           <path
             fill-rule="evenodd"
@@ -25,11 +34,14 @@ const ShapeOptions = ({ tool, colorShape, setColorShape }) => {
         </svg>
 
         <svg
+          onClick={() => setFillStyle(true)}
           width="20"
           height="20"
           viewBox="0 0 20 20"
           xmlns="http://www.w3.org/2000/svg"
-          className="cursor-pointer hover:scale-110 duration-150 "
+          className={`${
+            fillStyle ? "bg-blue-500" : ""
+          } cursor-pointer hover:scale-110 duration-150 rounded `}
         >
           <path
             fill-rule="evenodd"
