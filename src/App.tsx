@@ -104,8 +104,6 @@ function App() {
   useLayoutEffect(() => {
     const canvas = document.getElementById("canvas");
     const ctx = canvas.getContext("2d");
-    console.log("canvas height", canvas.height);
-    console.log("canvas width", canvas.width);
 
     const scaleHeight = canvas.height * scale;
     const scaleWidth = canvas.width * scale;
@@ -480,12 +478,7 @@ function App() {
         const Y = divider ? height / divider : height;
         const offsetX = X / 2;
         const offsetY = Y / 2;
-        console.log("X", X);
-        console.log("Y", Y);
-        console.log("width", width);
-        console.log("dheight", height);
 
-        console.log("divider", divider);
         img.src = "";
         const newElement = {
           x1: clientX - offsetX,
@@ -503,7 +496,7 @@ function App() {
         break;
     }
   };
-  console.log("selectedElement", selectedElement);
+
   const getMouseCoordinates = (event) => {
     const clientX =
       (event.clientX - panOffset.x * scale + scaleOffset.x) / scale;
@@ -549,10 +542,8 @@ function App() {
       }
     } else {
       const newElement = generateElementType(clientX, clientY);
-      console.log("newElement", newElement);
-      if (newElement) {
-        console.log("entering");
 
+      if (newElement) {
         setSelectedElement(newElement);
         setElements((state) => [...state, newElement]);
         setImageUrl("");
@@ -788,7 +779,6 @@ function App() {
     const text = e.target.value;
 
     if (!text) {
-      console.log("no text");
       setAction("none");
       setSelectedElement(null);
       return;
@@ -817,7 +807,6 @@ function App() {
     }
   };
 
-  console.log("toll", tool);
   const ChangeSize = () => {
     if (textSize === 34) return 5;
     if (textSize === 30) return 4;
@@ -826,6 +815,22 @@ function App() {
     if (textSize === 14) return 2;
     if (textSize === 10) return 1;
   };
+  function onTestChange(e: React.FormEvent<HTMLDivElement>) {
+    const Target = e.target as HTMLElement;
+    const childrens = Target.children.length;
+    const idArea = Target.parentElement?.children[0];
+    console.log("id areaa");
+
+    if (idArea) {
+      console.log("id areaa222");
+      idArea.innerHTML = "1";
+      for (let i = 0; i < childrens; i++) {
+        idArea.innerHTML += `<div>${i + 2}</div>`;
+      }
+    }
+
+    // If the user has pressed enter
+  }
   return (
     <div>
       <img
@@ -834,6 +839,17 @@ function App() {
         className="hidden pointer-events-none outline-none"
         id="img"
       />
+
+      <div className="flex gap-2 absolute top-1/2 left-1/2 z-50 bg-black text-white w-24 h-24">
+        <div className="flex flex-col">
+          <div>1</div>
+        </div>
+        <div
+          contentEditable="true"
+          onKeyUp={(e) => onTestChange(e)}
+          className="h-fit"
+        />
+      </div>
       <section className=" fixed bottom-2 left-1/2 -translate-x-1/2 z-50 bg-transparent">
         <div className="overflow-hidden flex gap-4 p-4 text-white z-50 w-full bg-black border-gray-500 border-[1px] h-14 rounded-2xl">
           <div className="flex gap-1 items-center">
