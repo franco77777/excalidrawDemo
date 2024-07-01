@@ -10,7 +10,7 @@ import Eraser from "./components/eraser";
 import Shape from "./components/shape";
 import Text from "./components/text";
 import ImageBar from "./components/image";
-import Options from "./components/options";
+
 import LineOptions from "./components/lineOptions";
 import PencilOptions from "./components/pencilOptions";
 import ShapeOptions from "./components/shapeOptions";
@@ -114,11 +114,6 @@ function App() {
     const scaleOffsetY = (scaleHeight - canvas.height) / 2; //280
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.beginPath();
-    ctx.ellipse(100, 100, 60, 50, Math.PI / 180, 0, 2 * Math.PI);
-    ctx.strokeStyle = "red";
-    ctx.stroke();
-    ctx.fillStyle = "blue";
 
     ctx.lineWidth = 2;
 
@@ -206,17 +201,35 @@ function App() {
   const createElement = async (element) => {
     const canvas = document.getElementById("canvas");
     const ctx = canvas.getContext("2d");
-
+    const minX = Math.min(element.x1, element.x2);
+    const maxX = Math.max(element.x1, element.x2);
+    const minY = Math.min(element.y1, element.y2);
+    const maxY = Math.max(element.y1, element.y2);
+    const width = maxX - minX;
+    const height = maxY - minY;
+    const centerX = minX + width / 2;
+    const centerY = minY + height / 2;
     switch (element.type) {
+      case "triangle": {
+        ctx.beginPath();
+        ctx.moveTo(centerX, minY);
+        ctx.lineTo(maxX, maxY);
+        ctx.lineTo(minX, maxY);
+        ctx.lineTo(centerX, minY);
+
+        ctx.stroke();
+        if (element.fillStyle) {
+          ctx.fillStyle = element.color;
+          ctx.strokeStyle = "transparent";
+          ctx.fill();
+        } else {
+          ctx.strokeStyle = element.color;
+        }
+        ctx.stroke();
+        ctx.closePath();
+        break;
+      }
       case "circle": {
-        const minX = Math.min(element.x1, element.x2);
-        const maxX = Math.max(element.x1, element.x2);
-        const minY = Math.min(element.y1, element.y2);
-        const maxY = Math.max(element.y1, element.y2);
-        const width = maxX - minX;
-        const height = maxY - minY;
-        const centerX = minX + width / 2;
-        const centerY = minY + height / 2;
         ctx.beginPath();
         ctx.ellipse(
           centerX,
@@ -340,6 +353,7 @@ function App() {
       }
       case "image":
       case "circle":
+      case "triangle":
       case "rectangle": {
         const topLeft = nearPoint(clientX, clientY, x1, y1, "tl");
         const topRight = nearPoint(clientX, clientY, x2, y1, "tr");
@@ -396,6 +410,7 @@ function App() {
       id = 1;
     }
     switch (tool) {
+      case "triangle":
       case "rectangle":
       case "circle": {
         const newElement = {
@@ -684,6 +699,7 @@ function App() {
     let newElement;
     switch (elementForUpdate.type) {
       case "rectangle":
+      case "triangle":
       case "circle":
       case "line":
         {

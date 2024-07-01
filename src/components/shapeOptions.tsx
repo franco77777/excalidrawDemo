@@ -14,7 +14,9 @@ const ShapeOptions = ({
     <>
       <div
         className={`${
-          tool === "rectangle" || tool === "circle" ? "-top-10" : "top-0"
+          tool === "rectangle" || tool === "circle" || tool === "triangle"
+            ? "-top-10"
+            : "top-0"
         }
   flex gap-2 items-center text-white h-10 w-[90%]  p-2 absolute -z-10  duration-300 ease-in-out rounded-t-lg left-1/2 -translate-x-1/2 bg-black border-x-[1px] border-t-[1px] border-gray-500`}
       >
@@ -88,6 +90,24 @@ const ShapeOptions = ({
             clip-rule="evenodd"
             fill="currentColor"
             d="M10 3.125C6.20304 3.125 3.125 6.20304 3.125 10C3.125 13.797 6.20304 16.875 10 16.875C13.797 16.875 16.875 13.797 16.875 10C16.875 6.20304 13.797 3.125 10 3.125ZM1.875 10C1.875 5.51269 5.51269 1.875 10 1.875C14.4873 1.875 18.125 5.51269 18.125 10C18.125 14.4873 14.4873 18.125 10 18.125C5.51269 18.125 1.875 14.4873 1.875 10Z"
+          ></path>
+        </svg>
+        <svg
+          onClick={() => setTool("triangle")}
+          width="20"
+          height="20"
+          viewBox="0 0 20 20"
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+          className={`${
+            tool === "triangle" ? "bg-blue-500 scale-110" : "hover:scale-110"
+          } cursor-pointer  duration-150 rounded`}
+        >
+          <path
+            fill-rule="evenodd"
+            clip-rule="evenodd"
+            fill="currentColor"
+            d="M10.0001 2.08398L18.2995 16.459H1.70068L10.0001 2.08398ZM10.0001 4.58398L3.86575 15.209H16.1344L10.0001 4.58398Z"
           ></path>
         </svg>
         <VerticalBar />
