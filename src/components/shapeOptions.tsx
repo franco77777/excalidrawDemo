@@ -8,12 +8,15 @@ const ShapeOptions = ({
   setColorShape,
   setFillStyle,
   fillStyle,
+  setTool,
 }) => {
   return (
     <>
       <div
-        className={`${tool === "rectangle" ? "-top-10" : "top-0"}
-  flex gap-4 items-center text-white h-10 w-[90%]  p-2 absolute -z-10  duration-300 ease-in-out rounded-t-lg left-1/2 -translate-x-1/2 bg-black border-x-[1px] border-t-[1px] border-gray-500`}
+        className={`${
+          tool === "rectangle" || tool === "circle" ? "-top-10" : "top-0"
+        }
+  flex gap-2 items-center text-white h-10 w-[90%]  p-2 absolute -z-10  duration-300 ease-in-out rounded-t-lg left-1/2 -translate-x-1/2 bg-black border-x-[1px] border-t-[1px] border-gray-500`}
       >
         <svg
           onClick={() => setFillStyle(false)}
@@ -22,8 +25,8 @@ const ShapeOptions = ({
           viewBox="0 0 20 20"
           xmlns="http://www.w3.org/2000/svg"
           className={`${
-            fillStyle ? "" : "bg-blue-500"
-          } cursor-pointer hover:scale-110 duration-150 rounded `}
+            fillStyle ? "hover:scale-110" : "bg-blue-500 scale-110"
+          } cursor-pointer  duration-150 rounded `}
         >
           <path
             fill-rule="evenodd"
@@ -40,8 +43,8 @@ const ShapeOptions = ({
           viewBox="0 0 20 20"
           xmlns="http://www.w3.org/2000/svg"
           className={`${
-            fillStyle ? "bg-blue-500" : ""
-          } cursor-pointer hover:scale-110 duration-150 rounded `}
+            fillStyle ? "bg-blue-500 scale-110" : "hover:scale-110"
+          } cursor-pointer  duration-150 rounded `}
         >
           <path
             fill-rule="evenodd"
@@ -52,12 +55,15 @@ const ShapeOptions = ({
         </svg>
         <VerticalBar />
         <svg
+          onClick={() => setTool("rectangle")}
           width="20"
           height="20"
           viewBox="0 0 20 20"
           fill="none"
           xmlns="http://www.w3.org/2000/svg"
-          className="cursor-pointer hover:scale-110 duration-150 "
+          className={`${
+            tool === "rectangle" ? "bg-blue-500 scale-110" : "hover:scale-110"
+          } cursor-pointer  duration-150 rounded`}
         >
           <path
             fill-rule="evenodd"
@@ -66,7 +72,24 @@ const ShapeOptions = ({
             d="M2.70825 2.70898H17.2916V17.2923H2.70825V2.70898ZM3.95825 3.95898V16.0423H16.0416V3.95898H3.95825Z"
           ></path>
         </svg>
-
+        <svg
+          onClick={() => setTool("circle")}
+          width="20"
+          height="20"
+          viewBox="0 0 20 20"
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+          className={`${
+            tool === "circle" ? "bg-blue-500 scale-110" : "hover:scale-110"
+          } cursor-pointer  duration-150 rounded`}
+        >
+          <path
+            fill-rule="evenodd"
+            clip-rule="evenodd"
+            fill="currentColor"
+            d="M10 3.125C6.20304 3.125 3.125 6.20304 3.125 10C3.125 13.797 6.20304 16.875 10 16.875C13.797 16.875 16.875 13.797 16.875 10C16.875 6.20304 13.797 3.125 10 3.125ZM1.875 10C1.875 5.51269 5.51269 1.875 10 1.875C14.4873 1.875 18.125 5.51269 18.125 10C18.125 14.4873 14.4873 18.125 10 18.125C5.51269 18.125 1.875 14.4873 1.875 10Z"
+          ></path>
+        </svg>
         <VerticalBar />
         <ColorOptions setColor={setColorShape} color={colorShape} />
       </div>

@@ -114,8 +114,12 @@ function App() {
     const scaleOffsetY = (scaleHeight - canvas.height) / 2; //280
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.beginPath();
+    ctx.ellipse(100, 100, 60, 50, Math.PI / 180, 0, 2 * Math.PI);
     ctx.strokeStyle = "red";
+    ctx.stroke();
     ctx.fillStyle = "blue";
+
     ctx.lineWidth = 2;
 
     //change the size of one rectangle, then redraw both of them
@@ -204,6 +208,38 @@ function App() {
     const ctx = canvas.getContext("2d");
 
     switch (element.type) {
+      case "circle": {
+        const minX = Math.min(element.x1, element.x2);
+        const maxX = Math.max(element.x1, element.x2);
+        const minY = Math.min(element.y1, element.y2);
+        const maxY = Math.max(element.y1, element.y2);
+        const width = maxX - minX;
+        const height = maxY - minY;
+        const centerX = minX + width / 2;
+        const centerY = minY + height / 2;
+        ctx.beginPath();
+        ctx.ellipse(
+          centerX,
+          centerY,
+          width / 2,
+          height / 2,
+          Math.PI / 180,
+          0,
+          2 * Math.PI
+        );
+        if (element.fillStyle) {
+          ctx.fillStyle = element.color;
+          ctx.strokeStyle = "transparent";
+          ctx.fill();
+          ctx.stroke();
+          break;
+        } else {
+          ctx.strokeStyle = element.color;
+          ctx.stroke();
+          break;
+        }
+      }
+
       case "line":
         ctx.beginPath();
         ctx.strokeStyle = element.color;
@@ -303,6 +339,7 @@ function App() {
         return start || end || on;
       }
       case "image":
+      case "circle":
       case "rectangle": {
         const topLeft = nearPoint(clientX, clientY, x1, y1, "tl");
         const topRight = nearPoint(clientX, clientY, x2, y1, "tr");
@@ -359,10 +396,11 @@ function App() {
       id = 1;
     }
     switch (tool) {
-      case "rectangle": {
+      case "rectangle":
+      case "circle": {
         const newElement = {
           fillStyle,
-          lineWidth,
+
           color: colorShape,
           x1: clientX,
           y1: clientY,
@@ -646,6 +684,7 @@ function App() {
     let newElement;
     switch (elementForUpdate.type) {
       case "rectangle":
+      case "circle":
       case "line":
         {
           newElement = {
@@ -812,6 +851,7 @@ function App() {
           setPencilWidth={setPencilWidth}
         />
         <ShapeOptions
+          setTool={setTool}
           tool={tool}
           colorShape={colorShape}
           setColorShape={setColorShape}
